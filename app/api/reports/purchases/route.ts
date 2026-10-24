@@ -23,9 +23,9 @@ export async function GET(req: NextRequest) {
       ),
       db().query(
         `SELECT created_at::date AS date, COUNT(*)::int AS orders, COALESCE(SUM(grand_total),0)::numeric(14,2) AS spend
-         FROM purchases WHERE status <> 'cancelled' AND created_at >= $1::date AND created_at < ($2::date + INTERVAL '1 day')
+         FROM purchases WHERE status <> 'cancelled' AND created_at >= $1::date AND created_at < ($2::date + INTERVAL '1 day') AND ($3::boolean=true OR store_id=$4)
          GROUP BY created_at::date ORDER BY date`,
-        [from, to],
+        [from, to, ['super_admin','admin'].includes(auth.user.role), auth.user.storeId],
       ),
       db().query(
         `SELECT COALESCE(s.name,'Unassigned') AS supplier, COUNT(*)::int AS orders,
