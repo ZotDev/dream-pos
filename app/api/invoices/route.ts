@@ -15,8 +15,8 @@ export async function GET(req: NextRequest) {
                 s.grand_total,s.payment_method,s.status,s.created_at,c.name AS customer_name,c.phone AS customer_phone,
                 c.email AS customer_email,c.address AS customer_address
          FROM sales s LEFT JOIN customers c ON c.id=s.customer_id
-         WHERE s.invoice_no=$1 LIMIT 1`,
-        [invoiceNo],
+         WHERE s.invoice_no=$1 AND ($2::boolean=true OR s.store_id=$3) LIMIT 1`,
+        [invoiceNo,['super_admin','admin'].includes(auth.user.role),auth.user.storeId],
       );
       if (!sale.rows[0]) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
       const items = await db().query(
@@ -30,8 +30,8 @@ export async function GET(req: NextRequest) {
       `SELECT s.id,s.invoice_no,s.subtotal,s.tax_total,s.discount_total,s.grand_total,s.payment_method,s.status,s.created_at,
               c.name AS customer_name,c.phone AS customer_phone
        FROM sales s LEFT JOIN customers c ON c.id=s.customer_id
-       ORDER BY s.created_at DESC LIMIT $1`,
-      [limit],
+       WHERE ($2::boolean=true OR s.store_id=$3) ORDER BY s.created_at DESC LIMIT $1`,
+      [limit,['super_admin','admin'].includes(auth.user.role),auth.user.storeId],
     );
     return NextResponse.json({ invoices: result.rows });
   } catch (error) {
