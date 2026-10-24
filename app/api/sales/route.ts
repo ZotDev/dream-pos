@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/server/db';
-import { requireSession } from '@/lib/server/auth';
+import { requireRole } from '@/lib/server/auth';
 export const runtime='nodejs';
+const canCheckout=['super_admin','admin','manager','cashier','salesman','supervisor'];
 export async function POST(req:NextRequest){
- const auth=await requireSession();if('error' in auth)return auth.error;
+ const auth=await requireRole(canCheckout);if('error' in auth)return auth.error;
  const b=await req.json().catch(()=>null);const items=Array.isArray(b?.items)?b.items:[];const payment=String(b?.paymentMethod??'cash');if(!items.length||items.length>100||!['cash','card','upi','other'].includes(payment))return NextResponse.json({error:'Valid cart and payment method are required'},{status:400});
  const client=await db().connect();try{await client.query('BEGIN');let subtotal=0;const lines=[];
  for(const item of items){const id=Number(item.productId),qty=Number(item.quantity);if(!Number.isInteger(id)||id<=0||!Number.isFinite(qty)||qty<=0||qty>10000)throw new Error('Invalid item quantity');const pr=await client.query('SELECT id,name,sku,selling_price,stock_qty,tax_rate FROM products WHERE id=$1 AND is_active=true FOR UPDATE',[id]);const p=pr.rows[0];if(!p)throw new Error('Product not found');if(Number(p.stock_qty)<qty)throw new Error(`Insufficient stock for ${p.name}`);const unit=Number(p.selling_price),taxRate=Number(p.tax_rate);const line=unit*qty;subtotal+=line;lines.push({p,qty,unit,taxRate,line});}
