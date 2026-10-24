@@ -17,7 +17,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Validate project structure
@@ -25,6 +24,4 @@ jobs:
       - name: Production build
         run: npm run build
         env:
-          # Build must not need live production secrets. Add non-sensitive test values
-          # only if the app begins requiring environment variables during compilation.
           CI: "true"
