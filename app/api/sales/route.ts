@@ -6,6 +6,18 @@ import { requireRole } from '@/lib/server/auth';
 export const runtime = 'nodejs';
 const canCheckout = ['super_admin', 'admin', 'manager', 'cashier', 'salesman', 'supervisor'];
 
+export async function GET(req: NextRequest) {
+  const auth = await requireRole(['super_admin','admin','manager','cashier','salesman','supervisor','accountant']);
+  if ('error' in auth) return auth.error;
+  const from=req.nextUrl.searchParams.get('from')||'2000-01-01';
+  const to=req.nextUrl.searchParams.get('to')||'2999-12-31';
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(from)||!/^\d{4}-\d{2}-\d{2}$/.test(to)||from>to)return NextResponse.json({error:'Valid date range required'},{status:400});
+  try {
+    const r=await db().query(`SELECT s.id,s.invoice_no,s.store_id,s.cashier_id,s.customer_id,s.subtotal,s.tax_total,s.discount_total,s.grand_total,s.payment_method,s.status,s.created_at,c.name AS customer_name,u.full_name AS cashier_name FROM sales s LEFT JOIN customers c ON c.id=s.customer_id LEFT JOIN app_users u ON u.id=s.cashier_id WHERE s.created_at >= $1::date AND s.created_at < ($2::date + INTERVAL '1 day') AND ($3::bigint IS NULL OR s.store_id=$3) ORDER BY s.created_at DESC LIMIT 1000`,[from,to,['super_admin','admin'].includes(auth.user.role)?null:auth.user.storeId]);
+    return NextResponse.json({sales:r.rows,from,to});
+  } catch(e) { console.error(e); return NextResponse.json({error:'Could not load sales history'},{status:500}); }
+}
+
 export async function POST(req: NextRequest) {
   const auth = await requireRole(canCheckout);
   if ('error' in auth) return auth.error;
