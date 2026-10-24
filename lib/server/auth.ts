@@ -16,7 +16,7 @@ export async function getSession(): Promise<SessionUser | null> {
   if (a.length !== b.length || !timingSafeEqual(a,b)) return null;
   const data = JSON.parse(Buffer.from(payload,'base64url').toString());
   if (!Number.isSafeInteger(data.id) || data.id <= 0 || typeof data.name !== 'string' || typeof data.email !== 'string' || typeof data.role !== 'string' || !Number.isFinite(data.exp) || data.exp <= Date.now()) return null;
-  return { id:data.id, name:data.name, email:data.email, role:data.role, storeId:Number.isSafeInteger(data.storeId) ? data.storeId : null };
+  const current = await db().query('SELECT full_name,email,role,store_id,is_active FROM app_users WHERE id=$1 LIMIT 1',[data.id]); const row=current.rows[0]; if(!row||!row.is_active)return null; return { id:data.id, name:row.full_name, email:row.email, role:row.role, storeId:row.store_id===null?null:Number(row.store_id) };
  } catch { return null; }
 }
 export async function requireSession() { const user = await getSession(); if (!user) return { error: Response.json({error:'Authentication required'}, {status:401}) } as const; return { user } as const; }
