@@ -18,8 +18,8 @@ export async function GET(req: NextRequest) {
         `SELECT COUNT(*)::int AS orders, COALESCE(SUM(subtotal),0)::numeric(14,2) AS subtotal,
                 COALESCE(SUM(tax_total),0)::numeric(14,2) AS tax,
                 COALESCE(SUM(grand_total),0)::numeric(14,2) AS spend
-         FROM purchases WHERE status <> 'cancelled' AND created_at >= $1::date AND created_at < ($2::date + INTERVAL '1 day')`,
-        [from, to],
+         FROM purchases WHERE status <> 'cancelled' AND created_at >= $1::date AND created_at < ($2::date + INTERVAL '1 day') AND ($3::boolean=true OR store_id=$4)`,
+        [from, to, ['super_admin','admin'].includes(auth.user.role), auth.user.storeId],
       ),
       db().query(
         `SELECT created_at::date AS date, COUNT(*)::int AS orders, COALESCE(SUM(grand_total),0)::numeric(14,2) AS spend
@@ -31,17 +31,17 @@ export async function GET(req: NextRequest) {
         `SELECT COALESCE(s.name,'Unassigned') AS supplier, COUNT(*)::int AS orders,
                 COALESCE(SUM(p.grand_total),0)::numeric(14,2) AS spend
          FROM purchases p LEFT JOIN suppliers s ON s.id=p.supplier_id
-         WHERE p.status <> 'cancelled' AND p.created_at >= $1::date AND p.created_at < ($2::date + INTERVAL '1 day')
+         WHERE p.status <> 'cancelled' AND p.created_at >= $1::date AND p.created_at < ($2::date + INTERVAL '1 day') AND ($3::boolean=true OR p.store_id=$4)
          GROUP BY s.name ORDER BY spend DESC LIMIT 10`,
-        [from, to],
+        [from, to, ['super_admin','admin'].includes(auth.user.role), auth.user.storeId],
       ),
       db().query(
         `SELECT pr.name AS product, SUM(pi.quantity)::numeric(14,3) AS quantity,
                 SUM(pi.line_total)::numeric(14,2) AS spend
          FROM purchase_items pi JOIN purchases p ON p.id=pi.purchase_id JOIN products pr ON pr.id=pi.product_id
-         WHERE p.status <> 'cancelled' AND p.created_at >= $1::date AND p.created_at < ($2::date + INTERVAL '1 day')
+         WHERE p.status <> 'cancelled' AND p.created_at >= $1::date AND p.created_at < ($2::date + INTERVAL '1 day') AND ($3::boolean=true OR p.store_id=$4)
          GROUP BY pr.name ORDER BY spend DESC LIMIT 10`,
-        [from, to],
+        [from, to, ['super_admin','admin'].includes(auth.user.role), auth.user.storeId],
       ),
     ]);
     return NextResponse.json({ from, to, totals: totals.rows[0], daily: daily.rows, suppliers: suppliers.rows, topProducts: topProducts.rows });
