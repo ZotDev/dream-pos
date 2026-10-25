@@ -16,3 +16,6 @@ SELECT s.id,p.id,
        CASE WHEN s.id=(SELECT id FROM stores ORDER BY id LIMIT 1) THEN p.stock_qty ELSE 0 END
 FROM stores s CROSS JOIN products p
 ON CONFLICT(store_id,product_id) DO NOTHING;
+
+-- Attribute legacy movements to the store receiving the legacy opening balance.
+UPDATE stock_movements SET store_id=(SELECT id FROM stores ORDER BY id LIMIT 1) WHERE store_id IS NULL AND EXISTS (SELECT 1 FROM stores);
