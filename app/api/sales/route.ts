@@ -22,6 +22,8 @@ export async function POST(req: NextRequest) {
   const auth = await requireRole(canCheckout);
   if ('error' in auth) return auth.error;
 
+  const storeId=auth.user.storeId;
+  if(!storeId)return NextResponse.json({error:'Assign an active store to this account before checkout'},{status:400});
   const body = await req.json().catch(() => null);
   const items = Array.isArray(body?.items) ? body.items : [];
   const payment = String(body?.paymentMethod ?? 'cash');
@@ -71,9 +73,10 @@ export async function POST(req: NextRequest) {
       if (!Number.isInteger(id) || id <= 0 || !Number.isFinite(qty) || qty <= 0 || qty > 10000) {
         throw new Error('Invalid item quantity');
       }
+      await client.query('INSERT INTO store_inventory(store_id,product_id,quantity) VALUES($1,$2,0) ON CONFLICT(store_id,product_id) DO NOTHING',[storeId,id]);
       const pr = await client.query(
-        'SELECT id,name,sku,selling_price,stock_qty,tax_rate FROM products WHERE id=$1 AND is_active=true FOR UPDATE',
-        [id],
+        'SELECT p.id,p.name,p.sku,p.selling_price,si.quantity AS stock_qty,p.tax_rate FROM products p JOIN store_inventory si ON si.product_id=p.id AND si.store_id=$2 WHERE p.id=$1 AND p.is_active=true FOR UPDATE OF p,si',
+        [id,storeId],
       );
       const p = pr.rows[0];
       if (!p) throw new Error('Product not found');
@@ -91,17 +94,18 @@ export async function POST(req: NextRequest) {
       `INSERT INTO sales(invoice_no,store_id,cashier_id,customer_id,subtotal,tax_total,discount_total,grand_total,payment_method)
        VALUES($1,$2,$3,$4,$5,$6,0,$7,$8)
        RETURNING id,invoice_no,customer_id,subtotal,tax_total,grand_total,payment_method,created_at`,
-      [invoice, auth.user.storeId, auth.user.id, customerId, subtotal, taxTotal, total, payment],
+      [invoice, storeId, auth.user.id, customerId, subtotal, taxTotal, total, payment],
     );
     for (const item of lines) {
       await client.query(
         'INSERT INTO sale_items(sale_id,product_id,product_name,sku,quantity,unit_price,tax_rate,line_total) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',
         [inserted.rows[0].id, item.p.id, item.p.name, item.p.sku, item.qty, item.unit, item.taxRate, item.line],
       );
-      await client.query('UPDATE products SET stock_qty=stock_qty-$1,updated_at=NOW() WHERE id=$2', [item.qty, item.p.id]);
+      await client.query('UPDATE store_inventory SET quantity=quantity-$1,updated_at=NOW() WHERE store_id=$2 AND product_id=$3',[item.qty,storeId,item.p.id]);
+      await client.query('UPDATE products SET stock_qty=(SELECT COALESCE(SUM(quantity),0) FROM store_inventory WHERE product_id=$1),updated_at=NOW() WHERE id=$1',[item.p.id]);
       await client.query(
-        "INSERT INTO stock_movements(product_id,user_id,movement_type,quantity,reference) VALUES($1,$2,'sale',$3,$4)",
-        [item.p.id, auth.user.id, -item.qty, invoice],
+        "INSERT INTO stock_movements(product_id,user_id,store_id,movement_type,quantity,reference) VALUES($1,$2,$3,'sale',$4,$5)",
+        [item.p.id, auth.user.id, storeId, -item.qty, invoice],
       );
     }
     await client.query('COMMIT');
