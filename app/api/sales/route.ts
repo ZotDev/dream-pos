@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (customerId !== null) {
-      const customer = await client.query('SELECT id FROM customers WHERE id = $1', [customerId]);
+      const customer = await client.query('SELECT id FROM customers WHERE id = $1 AND ($2::boolean=true OR store_id=$3)', [customerId,['super_admin','admin'].includes(auth.user.role),storeId]);
       if (!customer.rows[0]) throw new Error('Selected customer was not found');
     }
 
