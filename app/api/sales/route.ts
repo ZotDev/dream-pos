@@ -67,12 +67,9 @@ export async function POST(req: NextRequest) {
 
     let subtotal = 0;
     const lines: Array<{ p: any; qty: number; unit: number; taxRate: number; line: number }> = [];
-    for (const item of items) {
-      const id = Number(item.productId);
-      const qty = Number(item.quantity);
-      if (!Number.isInteger(id) || id <= 0 || !Number.isFinite(qty) || qty <= 0 || qty > 10000) {
-        throw new Error('Invalid item quantity');
-      }
+    const combined = new Map<number,number>();
+    for (const item of items) { const id=Number(item.productId),qty=Number(item.quantity); if(!Number.isInteger(id)||id<=0||!Number.isFinite(qty)||qty<=0||qty>10000)throw new Error('Invalid item quantity'); const total=(combined.get(id)||0)+qty; if(total>10000)throw new Error('Combined product quantity exceeds the checkout limit'); combined.set(id,total); }
+    for (const [id,qty] of combined) {
       await client.query('INSERT INTO store_inventory(store_id,product_id,quantity) VALUES($1,$2,0) ON CONFLICT(store_id,product_id) DO NOTHING',[storeId,id]);
       const pr = await client.query(
         'SELECT p.id,p.name,p.sku,p.selling_price,si.quantity AS stock_qty,p.tax_rate FROM products p JOIN store_inventory si ON si.product_id=p.id AND si.store_id=$2 WHERE p.id=$1 AND p.is_active=true FOR UPDATE OF p,si',
