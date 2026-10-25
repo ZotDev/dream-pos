@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/server/db';
-import { requireSession } from '@/lib/server/auth';
+import { requireRole } from '@/lib/server/auth';
 
 export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
-  const auth = await requireSession();
+  const auth = await requireRole(['super_admin','admin','manager','cashier','salesman','accountant']);
   if ('error' in auth) return auth.error;
   const invoiceNo = req.nextUrl.searchParams.get('invoice')?.trim();
   try {
