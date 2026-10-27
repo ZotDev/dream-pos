@@ -16,7 +16,8 @@ export async function GET() {
        FROM app_roles r
        LEFT JOIN app_role_permissions rp ON rp.role_id=r.id
        LEFT JOIN app_permissions p ON p.id=rp.permission_id
-       LEFT JOIN app_user_role_assignments ura ON ura.role_id=r.id AND ura.is_active=true\n       LEFT JOIN app_users u ON u.role=r.role_key AND u.is_active=true
+       LEFT JOIN app_user_role_assignments ura ON ura.role_id=r.id AND ura.is_active=true
+       LEFT JOIN app_users u ON u.role=r.role_key AND u.is_active=true
        WHERE r.organization_id IS NULL OR r.organization_id IN (
          SELECT id FROM saas_tenants WHERE owner_email=$1
        )
