@@ -10,13 +10,13 @@ export async function GET() {
   try {
     const result = await db().query(
       `SELECT r.id,r.role_key AS role,r.name,r.description,r.is_system,r.is_active,
-              COUNT(DISTINCT ura.user_id)::int AS assigned_users,
+              COUNT(DISTINCT COALESCE(ura.user_id,u.id))::int AS assigned_users,
               COALESCE(array_agg(DISTINCT p.permission_key) FILTER (WHERE p.permission_key IS NOT NULL),'{}') AS permissions,
               COALESCE(array_agg(DISTINCT p.module_key) FILTER (WHERE p.module_key IS NOT NULL),'{}') AS modules
        FROM app_roles r
        LEFT JOIN app_role_permissions rp ON rp.role_id=r.id
        LEFT JOIN app_permissions p ON p.id=rp.permission_id
-       LEFT JOIN app_user_role_assignments ura ON ura.role_id=r.id AND ura.is_active=true
+       LEFT JOIN app_user_role_assignments ura ON ura.role_id=r.id AND ura.is_active=true\n       LEFT JOIN app_users u ON u.role=r.role_key AND u.is_active=true
        WHERE r.organization_id IS NULL OR r.organization_id IN (
          SELECT id FROM saas_tenants WHERE owner_email=$1
        )
