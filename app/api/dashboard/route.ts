@@ -18,8 +18,8 @@ export async function GET(){
  try{
   const [sales,products,customers,expenses,lowStock,recent,people,tasks]=await Promise.all([
    canSeeSales?db().query(`SELECT COUNT(*)::int transactions,COALESCE(SUM(grand_total),0)::numeric(14,2) revenue,COALESCE(AVG(grand_total),0)::numeric(14,2) average_order FROM sales WHERE status='completed' AND created_at >= date_trunc('month',NOW()) AND ($1::boolean=true OR store_id=$2) AND ($3::boolean=false OR cashier_id=$4)`,[...scope,ownSales,auth.user.id]):Promise.resolve({rows:[{transactions:0,revenue:0,average_order:0}]}),
-   canSeeInventory?db().query('SELECT COUNT(*)::int total FROM products WHERE is_active=true'):Promise.resolve({rows:[{total:0}]}),
-   canSeeCustomers?db().query('SELECT COUNT(*)::int total FROM customers'):Promise.resolve({rows:[{total:0}]}),
+   canSeeInventory?db().query('SELECT COUNT(*)::int total FROM products p WHERE p.is_active=true AND ($1::boolean=true OR EXISTS(SELECT 1 FROM store_inventory si WHERE si.product_id=p.id AND si.store_id=$2))',scope):Promise.resolve({rows:[{total:0}]}),
+   canSeeCustomers?db().query('SELECT COUNT(*)::int total FROM customers WHERE ($1::boolean=true OR store_id=$2)',scope):Promise.resolve({rows:[{total:0}]}),
    canSeeFinance?db().query('SELECT COALESCE(SUM(amount),0)::numeric(14,2) total FROM expenses WHERE expense_date >= date_trunc(\'month\',CURRENT_DATE) AND ($1::boolean=true OR store_id=$2)',scope):Promise.resolve({rows:[{total:0}]}),
    canSeeInventory?db().query('SELECT p.id,p.name,p.sku,si.quantity AS stock_qty,p.reorder_level FROM store_inventory si JOIN products p ON p.id=si.product_id WHERE p.is_active=true AND si.quantity<=p.reorder_level AND ($1::boolean=true OR si.store_id=$2) ORDER BY si.quantity ASC LIMIT 8',scope):Promise.resolve({rows:[]}),
    canSeeSales?db().query(`SELECT s.id,s.invoice_no,s.grand_total,s.payment_method,s.created_at,u.full_name cashier FROM sales s LEFT JOIN app_users u ON u.id=s.cashier_id WHERE ($1::boolean=true OR s.store_id=$2) AND ($3::boolean=false OR s.cashier_id=$4) ORDER BY s.created_at DESC LIMIT 8`,[...scope,ownSales,auth.user.id]):Promise.resolve({rows:[]}),
