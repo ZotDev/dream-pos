@@ -1,0 +1,23 @@
+-- Indian GST and document metadata foundation. Safe to re-run; no fabricated registrations are populated.
+ALTER TABLE stores ADD COLUMN IF NOT EXISTS legal_name TEXT;
+ALTER TABLE stores ADD COLUMN IF NOT EXISTS gstin TEXT;
+ALTER TABLE stores ADD COLUMN IF NOT EXISTS pan TEXT;
+ALTER TABLE stores ADD COLUMN IF NOT EXISTS state_name TEXT;
+ALTER TABLE stores ADD COLUMN IF NOT EXISTS state_code CHAR(2);
+ALTER TABLE stores ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE stores ADD COLUMN IF NOT EXISTS invoice_terms TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS hsn_sac_code TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS tax_inclusive BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS gstin TEXT;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS state_name TEXT;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS state_code CHAR(2);
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS billing_address TEXT;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS shipping_address TEXT;
+ALTER TABLE sales ADD COLUMN IF NOT EXISTS place_of_supply_state_code CHAR(2);
+ALTER TABLE sales ADD COLUMN IF NOT EXISTS reverse_charge BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE sales ADD COLUMN IF NOT EXISTS document_type TEXT NOT NULL DEFAULT 'tax_invoice';
+ALTER TABLE sales ADD COLUMN IF NOT EXISTS original_invoice_no TEXT;
+ALTER TABLE sales ADD COLUMN IF NOT EXISTS notes TEXT;
+CREATE INDEX IF NOT EXISTS products_hsn_idx ON products(hsn_sac_code);
+CREATE INDEX IF NOT EXISTS customers_gstin_idx ON customers(gstin);
+CREATE INDEX IF NOT EXISTS stores_gstin_idx ON stores(gstin);
