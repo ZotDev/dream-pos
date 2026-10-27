@@ -20,10 +20,24 @@ export async function GET(req: NextRequest) {
       );
       if (!sale.rows[0]) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
       const items = await db().query(
-        'SELECT product_id,product_name,sku,quantity,unit_price,tax_rate,line_total FROM sale_items WHERE sale_id=$1 ORDER BY id',
+        'SELECT si.product_id,si.product_name,si.sku,si.quantity,si.unit_price,si.tax_rate,si.line_total,p.hsn_sac_code,p.unit FROM sale_items si LEFT JOIN products p ON p.id=si.product_id WHERE si.sale_id=$1 ORDER BY si.id',
         [sale.rows[0].id],
       );
-      return NextResponse.json({ invoice: sale.rows[0], items: items.rows });
+      const invoice = sale.rows[0];
+      const sameState = Boolean(invoice.supplier_state_code && invoice.place_of_supply_state_code && invoice.supplier_state_code === invoice.place_of_supply_state_code);
+      const lines = items.rows.map((item:any) => {
+        const taxable = Number(item.line_total || 0);
+        const rate = Number(item.tax_rate || 0);
+        const tax = taxable * rate / 100;
+        return { ...item, quantity:Number(item.quantity), unit_price:Number(item.unit_price), line_total:taxable, tax_amount:Number(tax.toFixed(2)), cgst_amount:sameState?Number((tax/2).toFixed(2)):0, sgst_amount:sameState?Number((tax/2).toFixed(2)):0, igst_amount:invoice.supplier_state_code && invoice.place_of_supply_state_code && !sameState?Number(tax.toFixed(2)):0, hsn_missing:!item.hsn_sac_code };
+      });
+      const complianceWarnings:string[] = [];
+      if (!invoice.supplier_legal_name) complianceWarnings.push('Configure the supplier legal name in store settings.');
+      if (!invoice.supplier_gstin) complianceWarnings.push('Supplier GSTIN is not configured; confirm whether the supplier is registered and whether GST applies.');
+      if (lines.some((x:any)=>x.hsn_missing)) complianceWarnings.push('One or more items have no HSN/SAC code.');
+      if (!invoice.place_of_supply_state_code) complianceWarnings.push('Place of supply is missing; tax type (CGST/SGST vs IGST) cannot be confirmed.');
+      if (!invoice.customer_gstin) complianceWarnings.push('Customer GSTIN is absent; verify recipient classification and invoice particulars.');
+      return NextResponse.json({ invoice, items:lines, taxBreakup:{ cgst:lines.reduce((s:number,x:any)=>s+x.cgst_amount,0), sgst:lines.reduce((s:number,x:any)=>s+x.sgst_amount,0), igst:lines.reduce((s:number,x:any)=>s+x.igst_amount,0) }, complianceWarnings, legalNotice:'Invoice data is a draft output. Verify supplier/recipient particulars, applicable HSN/SAC, tax rates, place of supply, numbering, and e-invoicing/e-way bill requirements before issuing as a statutory document.' });
     }
     const limit = Math.min(200, Math.max(1, Number(req.nextUrl.searchParams.get('limit') || 100)));
     const result = await db().query(
