@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/server/db';
 import { requireRole } from '@/lib/server/auth';
+import { requireModule } from '@/lib/server/permissions';
 
 export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
-  const auth = await requireRole(['super_admin','admin','manager','cashier','salesman','accountant']);
-  if ('error' in auth) return auth.error;
+  const auth = await requireModule('Invoices'); if ('error' in auth) return auth.error;
   const invoiceNo = req.nextUrl.searchParams.get('invoice')?.trim();
   try {
     if (invoiceNo) {
