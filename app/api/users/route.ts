@@ -19,7 +19,7 @@ export async function GET(req:NextRequest){
    const r=await db().query("SELECT id,full_name,email,role,store_id,is_active FROM app_users WHERE is_active=true AND ($1::boolean=true OR store_id=$2 OR id=$3) ORDER BY full_name",[['super_admin','admin'].includes(a.user.role),a.user.storeId,a.user.id]);
    return NextResponse.json({users:r.rows});
   }
-  const r=await db().query('SELECT u.id,u.full_name,u.email,u.role,u.store_id,u.is_active,u.created_at,s.name store_name FROM app_users u LEFT JOIN stores s ON s.id=u.store_id ORDER BY u.full_name');
+  const r=await db().query('SELECT u.id,u.full_name,u.email,u.role,u.store_id,u.is_active,u.created_at,s.name store_name FROM app_users u LEFT JOIN stores s ON s.id=u.store_id WHERE ($1::boolean=true OR u.store_id=$2) ORDER BY u.full_name',[a.user.role==='super_admin',a.user.storeId]);
   return NextResponse.json({users:r.rows,roles:validRoles});
  }catch(e){console.error(e);return NextResponse.json({error:'Could not load users'},{status:500});}
 }
