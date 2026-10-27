@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/server/db';
-import { requireRole, requireSession } from '@/lib/server/auth';
+import { requireRole } from '@/lib/server/auth';
+import { requireModule } from '@/lib/server/permissions';
 export const runtime='nodejs';
 const canWrite=['super_admin','admin','manager','inventory_manager','store_keeper'];
 export async function GET() {
- const auth=await requireRole(['super_admin','admin','manager','cashier','inventory_manager','store_keeper','salesman','supervisor']); if('error' in auth) return auth.error;
+ const auth=await requireModule('Products'); if('error' in auth) return auth.error;
  try { const r=await db().query(`SELECT p.id,p.name,p.sku,COALESCE(p.barcode,'') barcode,COALESCE(c.name,'General') category,p.selling_price price,p.cost_price,p.tax_rate,p.unit,p.description,p.image_url,COALESCE((SELECT SUM(si.quantity) FROM store_inventory si WHERE si.product_id=p.id AND ($2::boolean=true OR si.store_id=$1)),0) stock,p.reorder_level FROM products p LEFT JOIN categories c ON c.id=p.category_id WHERE p.is_active=true AND ($2::boolean=true OR EXISTS(SELECT 1 FROM store_inventory sx WHERE sx.product_id=p.id AND sx.store_id=$1)) ORDER BY p.name`,[auth.user.storeId,['super_admin','admin'].includes(auth.user.role)]); return NextResponse.json({products:r.rows.map(p=>({...p,id:String(p.id),price:Number(p.price),stock:Number(p.stock),status:Number(p.stock)<=0?'Out of stock':Number(p.stock)<=Number(p.reorder_level)?'Low stock':'In stock'}))}); }
  catch(e){console.error('Products GET',e);return NextResponse.json({error:'Could not load products'},{status:500});}
 }
