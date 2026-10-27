@@ -6,7 +6,7 @@ const requiredRoles = [
   'Super Admin','Admin','Manager','Cashier','Inventory Manager','Store Keeper',
   'Salesman','Supervisor','Delivery Biker','Employee','Accountant','HR Manager',
 ];
-const missingRoles = requiredRoles.filter(role => !matrix.includes(`'${role}'`) && !matrix.includes(` ${role}:`));
+const missingRoles = requiredRoles.filter(role => !matrix.includes(`'${role}':`));
 if (missingRoles.length) {
   console.error('Permission matrix is missing roles:', missingRoles.join(', '));
   process.exitCode = 1;
@@ -45,11 +45,9 @@ if (missingRoutes.length) {
   process.exitCode = 1;
 }
 
-for (const role of ['super_admin','admin','manager','cashier','inventory_manager','store_keeper','salesman','supervisor','delivery_biker','employee','accountant','hr_manager']) {
-  if (!serverPermissions.includes(`${role}:`) && !serverPermissions.includes(`'${role}'`)) {
-    console.error('Server role adapter missing role:', role);
-    process.exitCode = 1;
-  }
+if (!serverPermissions.includes('ROLE_LABELS') || !serverPermissions.includes('ROLE_MODULE_ACCESS')) {
+  console.error('Server adapter must derive permissions from the shared frontend role matrix.');
+  process.exitCode = 1;
 }
 
 if (!process.exitCode) console.log('Access-control static checks passed. This is a source consistency check, not a runtime authorization test.');
