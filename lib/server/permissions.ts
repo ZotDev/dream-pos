@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireRole } from '@/lib/server/auth';
+import { requireRole, requireSession } from '@/lib/server/auth';
 import type { SessionUser } from '@/lib/server/auth';
 import { ROLE_MODULE_ACCESS, ROLE_LABELS, canAccessModule } from '@/lib/permissions';
 
@@ -34,7 +34,7 @@ export function roleCanAccessModuleKey(role: string, moduleKey: string): boolean
   return Boolean(allowed && (allowed.includes('*') || allowed.includes(moduleKey)));
 }
 export async function requireModule(module: string) {
-  const auth = await requireRole(Object.keys(SERVER_ROLE_MODULE_ACCESS));
+  const auth = await requireSession();
   if ('error' in auth) return auth;
   const moduleKey = MODULE_KEYS[module];
   if (!moduleKey) return { error: NextResponse.json({ error: 'Unknown protected module' }, { status: 403 }) } as const;
