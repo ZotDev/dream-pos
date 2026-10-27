@@ -33,6 +33,12 @@ const protectedRoutes = [
   ['app/api/accounting/route.ts', 'Accounting'],
   ['app/api/stores/route.ts', 'Stores'],
   ['app/api/audit/route.ts', 'Audit Log'],
+  ['app/api/invoices/route.ts', 'Invoices'],
+  ['app/api/leave-requests/route.ts', 'Leave Management'],
+  ['app/api/reports/inventory/route.ts', 'Reports & Analytics'],
+  ['app/api/reports/finance/route.ts', 'Reports & Analytics'],
+  ['app/api/stock/adjust/route.ts', 'Inventory'],
+  ['app/api/saas/route.ts', 'SaaS Super Admin'],
 ];
 const missingRoutes = [];
 for (const [path, module] of protectedRoutes) {
