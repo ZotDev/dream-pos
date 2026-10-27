@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "seed:demo-passwords": "node scripts/reset-demo-passwords.mjs",
-    "check:project": "node scripts/check-project.mjs"
+    "check:project": "node scripts/check-project.mjs",
+    "check:access": "node scripts/check-access.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
