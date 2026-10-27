@@ -2,12 +2,13 @@ import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/server/db';
 import { requireRole } from '@/lib/server/auth';
+import { requireModule } from '@/lib/server/permissions';
 
 export const runtime = 'nodejs';
 const canCheckout = ['super_admin', 'admin', 'manager', 'cashier', 'salesman', 'supervisor'];
 
 export async function GET(req: NextRequest) {
-  const auth = await requireRole(['super_admin','admin','manager','cashier','salesman','supervisor','accountant']);
+  const auth = await requireModule('Sales History');
   if ('error' in auth) return auth.error;
   const from=req.nextUrl.searchParams.get('from')||'2000-01-01';
   const to=req.nextUrl.searchParams.get('to')||'2999-12-31';
@@ -19,6 +20,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const moduleAuth = await requireModule('POS Billing');
+  if ('error' in moduleAuth) return moduleAuth.error;
   const auth = await requireRole(canCheckout);
   if ('error' in auth) return auth.error;
 
