@@ -16,7 +16,7 @@ const MODULE_KEYS: Record<string,string> = {
   'Customers':'customers','Invoices':'invoices','Expenses & Finance':'expenses','Accounting':'accounting',
   'Reports & Analytics':'reports','Attendance':'attendance','Leave Management':'leave',
   'Employees':'employees','Tasks':'tasks','HRM & Payroll':'payroll','Users & Roles':'users',
-  'Stores':'stores','Audit Log':'audit','SaaS Super Admin':'saas',
+  'Stores':'stores','Audit Log':'audit','SaaS Super Admin':'saas','GST & Tax Reports':'gst_tax_reports','Compliance Documents':'compliance_documents',
 };
 export const ROLE_MODULE_KEYS: Record<string,string[]> = Object.fromEntries(
   Object.entries(SERVER_ROLE_MODULE_ACCESS).map(([role, modules]) => [
@@ -36,10 +36,28 @@ export function roleCanAccessModuleKey(role: string, moduleKey: string): boolean
 export async function requireModule(module: string) {
   const auth = await requireRole(Object.keys(SERVER_ROLE_MODULE_ACCESS));
   if ('error' in auth) return auth;
-  if (!roleCanAccessModule(auth.user.role, module)) {
-    return { error: NextResponse.json({ error: 'Insufficient permissions for this module' }, { status: 403 }) } as const;
+  const moduleKey = MODULE_KEYS[module];
+  if (!moduleKey) return { error: NextResponse.json({ error: 'Unknown protected module' }, { status: 403 }) } as const;
+  try {
+    // Database-backed grants are authoritative for seeded/system roles and custom roles.
+    const grant = await (await import('@/lib/server/db')).db().query(
+      `SELECT EXISTS (
+         SELECT 1 FROM app_roles r
+         JOIN app_role_permissions rp ON rp.role_id=r.id
+         JOIN app_permissions p ON p.id=rp.permission_id
+         WHERE r.role_key=$1 AND r.organization_id IS NULL AND r.is_active=true
+           AND p.permission_key=$2
+       ) AS allowed`,
+      [auth.user.role, `module.${moduleKey}.view`],
+    );
+    if (!grant.rows[0]?.allowed) {
+      return { error: NextResponse.json({ error: 'Insufficient permissions for this module' }, { status: 403 }) } as const;
+    }
+    return auth;
+  } catch (error) {
+    console.error('Database RBAC check failed closed', error);
+    return { error: NextResponse.json({ error: 'Authorization service unavailable' }, { status: 503 }) } as const;
   }
-  return auth;
 }
 export function isGlobalStoreRole(user: Pick<SessionUser, 'role'>): boolean {
   return user.role === 'super_admin' || user.role === 'admin';
