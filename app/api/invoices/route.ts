@@ -12,9 +12,13 @@ export async function GET(req: NextRequest) {
     if (invoiceNo) {
       const sale = await db().query(
         `SELECT s.id,s.invoice_no,s.store_id,s.cashier_id,s.customer_id,s.subtotal,s.tax_total,s.discount_total,
-                s.grand_total,s.payment_method,s.status,s.created_at,c.name AS customer_name,c.phone AS customer_phone,
-                c.email AS customer_email,c.address AS customer_address
-         FROM sales s LEFT JOIN customers c ON c.id=s.customer_id
+                s.grand_total,s.payment_method,s.status,s.created_at,s.place_of_supply_state_code,s.reverse_charge,
+                s.document_type,s.original_invoice_no,s.notes,c.name AS customer_name,c.phone AS customer_phone,
+                c.email AS customer_email,c.address AS customer_address,c.gstin AS customer_gstin,c.state_code AS customer_state_code,
+                st.name AS store_name,st.legal_name AS supplier_legal_name,st.gstin AS supplier_gstin,st.pan AS supplier_pan,
+                st.address AS supplier_address,st.phone AS supplier_phone,st.email AS supplier_email,
+                st.state_name AS supplier_state_name,st.state_code AS supplier_state_code
+         FROM sales s LEFT JOIN customers c ON c.id=s.customer_id LEFT JOIN stores st ON st.id=s.store_id
          WHERE s.invoice_no=$1 AND ($2::boolean=true OR s.store_id=$3) LIMIT 1`,
         [invoiceNo,['super_admin','admin'].includes(auth.user.role),auth.user.storeId],
       );
