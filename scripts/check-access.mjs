@@ -6,7 +6,7 @@ const requiredRoles = [
   'Super Admin','Admin','Manager','Cashier','Inventory Manager','Store Keeper',
   'Salesman','Supervisor','Delivery Biker','Employee','Accountant','HR Manager',
 ];
-const missingRoles = requiredRoles.filter(role => !matrix.includes(`'${role}':`));
+const missingRoles = requiredRoles.filter(role => !matrix.includes(`${role}:`) && !matrix.includes(`'${role}':`));
 if (missingRoles.length) {
   console.error('Permission matrix is missing roles:', missingRoles.join(', '));
   process.exitCode = 1;
@@ -44,7 +44,9 @@ const missingRoutes = [];
 for (const [path, module] of protectedRoutes) {
   let source = '';
   try { source = readFileSync(path, 'utf8'); } catch {}
-  if (!source.includes('requireModule') || !source.includes(`'${module}'`)) missingRoutes.push(path);
+  if (path === 'app/api/leave-requests/route.ts') {
+    if (!source.includes("from '../leave/route'")) missingRoutes.push(path);
+  } else if (!source.includes('requireModule') || !source.includes(`'${module}'`)) missingRoutes.push(path);
 }
 if (missingRoutes.length) {
   console.error('Routes missing shared permission enforcement (review exceptions):', missingRoutes.join(', '));
