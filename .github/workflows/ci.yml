@@ -21,6 +21,8 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Validate project structure
         run: npm run check:project
+      - name: Check role permission coverage
+        run: npm run check:access
       - name: Production build
         run: npm run build
         env:
